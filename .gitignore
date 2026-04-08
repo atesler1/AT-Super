@@ -1,6 +1,9 @@
 # Data (ephemeral on Railway — do not commit)
 server/data.json
 
+# Client lockfile is Windows-specific — let Railway resolve natively on Linux
+client/package-lock.json
+
 # Vite local cache
 .vite/
 
