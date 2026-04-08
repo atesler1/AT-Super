@@ -15,7 +15,7 @@ const io = new Server(server, { cors: { origin: '*' } });
 
 if (fs.existsSync(CLIENT_BUILD)) {
   app.use(express.static(CLIENT_BUILD));
-  app.get('*', (req, res) => res.sendFile(path.join(CLIENT_BUILD, 'index.html')));
+  app.get('/{*path}', (req, res) => res.sendFile(path.join(CLIENT_BUILD, 'index.html')));
 }
 
 // Load or initialize state
