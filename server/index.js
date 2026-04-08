@@ -8,6 +8,8 @@ const { randomUUID } = require('crypto');
 const CLIENT_BUILD = path.join(__dirname, '../client/dist');
 
 const DATA_FILE = path.join(__dirname, 'data.json');
+const SEED_FILE = path.join(__dirname, 'data.seed.json');
+const CURRENT_SCHEMA = 1;
 
 const app = express();
 const server = http.createServer(app);
@@ -18,19 +20,52 @@ if (fs.existsSync(CLIENT_BUILD)) {
   app.get('/{*path}', (req, res) => res.sendFile(path.join(CLIENT_BUILD, 'index.html')));
 }
 
+function save() {
+  fs.writeFileSync(DATA_FILE, JSON.stringify(state, null, 2));
+}
+
+// Migrate data to current schema version
+function migrate(data) {
+  let v = data.schemaVersion || 0;
+  if (v === CURRENT_SCHEMA) return data;
+
+  // v0 → v1: added `price` field to items
+  if (v < 1) {
+    for (const list of Object.values(data.lists || {})) {
+      for (const item of list.items || []) {
+        if (item.price === undefined) item.price = 0;
+      }
+    }
+    v = 1;
+    console.log('Migrated data.json: v0 → v1');
+  }
+
+  // Add future migrations here:
+  // if (v < 2) { ... v = 2; console.log('Migrated data.json: v1 → v2'); }
+
+  data.schemaVersion = v;
+  return data;
+}
+
 // Load or initialize state
-let state = { lists: {} };
+let state = { schemaVersion: CURRENT_SCHEMA, lists: {} };
 if (fs.existsSync(DATA_FILE)) {
   try {
-    state = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
-    console.log(`Loaded ${Object.keys(state.lists).length} list(s) from data.json`);
+    const loaded = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+    state = migrate(loaded);
+    if ((loaded.schemaVersion || 0) !== CURRENT_SCHEMA) save(); // persist migration
+    console.log(`Loaded ${Object.keys(state.lists).length} list(s) from data.json (schema v${state.schemaVersion})`);
   } catch (e) {
     console.error('Failed to parse data.json, starting fresh');
   }
-}
-
-function save() {
-  fs.writeFileSync(DATA_FILE, JSON.stringify(state, null, 2));
+} else if (fs.existsSync(SEED_FILE)) {
+  try {
+    state = JSON.parse(fs.readFileSync(SEED_FILE, 'utf8'));
+    save();
+    console.log('No data.json found, initialized from seed');
+  } catch (e) {
+    console.error('Failed to parse data.seed.json, starting fresh');
+  }
 }
 
 function summaries() {
