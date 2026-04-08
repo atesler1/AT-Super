@@ -42,7 +42,7 @@ export default function ListPicker({ socket, lists, connected, userName, onSelec
     <div className="page">
       <header className="page-header">
         <div className="header-left">
-          <h1 className="app-title">SuperMarket Shopping List</h1>
+          <h1 className="app-title">Supermarket List</h1>
         </div>
         <span className={`status-badge ${connected ? 'on' : 'off'}`}>
           {connected ? 'Live' : 'Offline'}
