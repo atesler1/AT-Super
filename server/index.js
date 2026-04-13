@@ -74,6 +74,7 @@ function summaries() {
     name: l.name,
     count: l.items.length,
     createdAt: l.createdAt,
+    total: l.items.reduce((sum, i) => sum + (i.qty * (i.price || 0)), 0),
   }));
 }
 
@@ -128,6 +129,7 @@ io.on('connection', (socket) => {
     list.items = list.items.filter(i => !i.checked);
     save();
     broadcastList(listId);
+    broadcastSummaries();
   });
 
   socket.on('item:add', ({ listId, name, qty, category, addedBy, price }) => {
@@ -145,6 +147,7 @@ io.on('connection', (socket) => {
     });
     save();
     broadcastList(listId);
+    broadcastSummaries();
   });
 
   socket.on('item:toggle', ({ listId, id }) => {
@@ -154,6 +157,7 @@ io.on('connection', (socket) => {
     if (item) item.checked = !item.checked;
     save();
     broadcastList(listId);
+    broadcastSummaries();
   });
 
   socket.on('item:delete', ({ listId, id }) => {
@@ -162,6 +166,7 @@ io.on('connection', (socket) => {
     list.items = list.items.filter(i => i.id !== id);
     save();
     broadcastList(listId);
+    broadcastSummaries();
   });
 
   socket.on('item:rename', ({ listId, id, name }) => {
@@ -171,6 +176,7 @@ io.on('connection', (socket) => {
     if (item) item.name = name.trim();
     save();
     broadcastList(listId);
+    broadcastSummaries();
   });
 
   socket.on('item:setqty', ({ listId, id, qty }) => {
@@ -180,6 +186,7 @@ io.on('connection', (socket) => {
     if (item) item.qty = Math.max(1, qty);
     save();
     broadcastList(listId);
+    broadcastSummaries();
   });
 
   socket.on('item:setcategory', ({ listId, id, category }) => {
@@ -189,6 +196,17 @@ io.on('connection', (socket) => {
     if (item) item.category = category;
     save();
     broadcastList(listId);
+    broadcastSummaries();
+  });
+
+  socket.on('item:setprice', ({ listId, id, price }) => {
+    const list = state.lists[listId];
+    if (!list) return;
+    const item = list.items.find(i => i.id === id);
+    if (item) item.price = Math.max(0, parseFloat(price) || 0);
+    save();
+    broadcastList(listId);
+    broadcastSummaries();
   });
 });
 

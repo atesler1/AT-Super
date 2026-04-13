@@ -41,6 +41,9 @@ export default function ShoppingList({ socket, listId, userName, connected, onBa
   const [editId, setEditId] = useState(null);
   const [editValue, setEditValue] = useState('');
   const editRef = useRef(null);
+  const [editPriceId, setEditPriceId] = useState(null);
+  const [editPriceValue, setEditPriceValue] = useState('');
+  const editPriceRef = useRef(null);
 
   useEffect(() => {
     const joinList = () => socket.emit('list:join', listId);
@@ -60,6 +63,16 @@ export default function ShoppingList({ socket, listId, userName, connected, onBa
   useEffect(() => {
     if (editId !== null && editRef.current) editRef.current.focus();
   }, [editId]);
+
+  useEffect(() => {
+    if (editPriceId !== null && editPriceRef.current) editPriceRef.current.focus();
+  }, [editPriceId]);
+
+  const submitPriceEdit = (id) => {
+    const price = parseFloat(editPriceValue);
+    socket.emit('item:setprice', { listId, id, price: isNaN(price) ? 0 : price });
+    setEditPriceId(null);
+  };
 
   const addItem = () => {
     const name = input.trim();
@@ -89,6 +102,7 @@ export default function ShoppingList({ socket, listId, userName, connected, onBa
 
   const uncheckedTotal = unchecked.reduce((sum, i) => sum + (i.qty * (i.price || 0)), 0);
   const checkedTotal = checked.reduce((sum, i) => sum + (i.qty * (i.price || 0)), 0);
+  const grandTotal = uncheckedTotal + checkedTotal;
   const hasAnyPrice = list.items.some(i => i.price > 0);
 
   const filteredUnchecked = unchecked;
@@ -170,10 +184,32 @@ export default function ShoppingList({ socket, listId, userName, connected, onBa
                 )}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <span className="item-by">by {item.addedBy}</span>
-                  {item.price > 0 && (
+                  {editPriceId === item.id ? (
+                    <div className="price-wrapper" style={{ display: 'inline-flex' }}>
+                      <span className="price-symbol">₪</span>
+                      <input
+                        ref={editPriceRef}
+                        className="price-input"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={editPriceValue}
+                        onChange={e => setEditPriceValue(e.target.value)}
+                        onBlur={() => submitPriceEdit(item.id)}
+                        onKeyDown={e => { if (e.key === 'Enter') submitPriceEdit(item.id); if (e.key === 'Escape') setEditPriceId(null); }}
+                        style={{ width: 60 }}
+                      />
+                    </div>
+                  ) : (
                     <>
-                      <span className="item-price-badge">{formatPrice(item.price)}</span>
-                      {item.qty > 1 && (
+                      <span
+                        className={`item-price-badge${item.price > 0 ? '' : ' no-price'}`}
+                        style={{ cursor: 'pointer' }}
+                        onClick={() => { setEditPriceId(item.id); setEditPriceValue(item.price > 0 ? String(item.price) : ''); }}
+                      >
+                        {item.price > 0 ? formatPrice(item.price) : '+ price'}
+                      </span>
+                      {item.price > 0 && item.qty > 1 && (
                         <span className="item-subtotal">= {formatPrice(item.qty * item.price)}</span>
                       )}
                     </>
@@ -195,6 +231,13 @@ export default function ShoppingList({ socket, listId, userName, connected, onBa
         <div className="total-bar">
           <span className="total-bar-label">🛒 Shopping Total</span>
           <span className="total-bar-amount">{formatPrice(uncheckedTotal)}</span>
+        </div>
+      )}
+
+      {hasAnyPrice && checked.length > 0 && unchecked.length > 0 && (
+        <div className="total-bar grand-total">
+          <span className="total-bar-label">∑ Grand Total</span>
+          <span className="total-bar-amount">{formatPrice(grandTotal)}</span>
         </div>
       )}
 
